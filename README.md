@@ -1,69 +1,51 @@
 # Eigenspaces as a Word Subspace
 
-Quantifying semantic relations using top k principal components. Can be looked at as an optimization problem of L2 Norm orthogonal components of relation vectors in the Grassmannian.
+This project explores the geometric structure of word relationships in vector space, treating collections of word pairs expressing a relation as a subspace (or "eigenspace") within various word embedding models.
 
 ## Overview
 
-This project explores the idea of representing semantic relations as subspaces in a high-dimensional vector space, using eigenspace decomposition (principal component analysis) to extract the top-k principal components. The approach treats the problem as an optimization over the L2 norm of orthogonal components of relation vectors, leveraging concepts from the Grassmannian manifold.
+- **Motivation:** Natural language relations (like "country-capital" or "object-material") are typically represented as pairs in embedding space. This project investigates how these relations can be described as lower-dimensional subspaces, capturing the essence of each relation geometrically.
+
+- **Core Notebooks:**
+  - [`Relation_PCA.ipynb`](https://github.com/Aaditatgithub/Eigenspaces-as-a-Word-Subspace/blob/main/Relation_PCA.ipynb):  
+    - Finds low-dimensional subspaces that capture 95% of the variance for a given relation.
+    - Projects relation pairs into these subspaces and measures how "leaky" (orthogonal) off-relation pairs are.
+    - Finds nearest neighbors in embedding space for given words.
+    - Supports multiple embeddings: Word2Vec, Glove, BERT, RoBERTa, SBERT, LABSE.
+    - Contains curated sets of word pairs for many semantic relations (e.g., agent-verb, patient-verb, country-capital, part-whole, etc.).
+  - [`Subspace_Similarity.ipynb`](https://github.com/Aaditatgithub/Eigenspaces-as-a-Word-Subspace/blob/main/Subspace_Similarity.ipynb):  
+    - (Compares similarity between different relation subspaces and investigates their overlaps using the above geometrical framework.)
+
+- **Reference Paper:**  
+  - [`IEEE-Paper.pdf`](https://github.com/Aaditatgithub/Eigenspaces-as-a-Word-Subspace/blob/main/IEEE-Paper.pdf): Formal write-up of the approach, methods, and findings.
 
 ## Features
 
-- **Quantifies semantic relations** between words using principal component analysis (PCA).
-- **Extracts top-k principal components** to represent key semantic directions.
-- **Formulates the problem as an optimization** over L2 norm orthogonal components in the Grassmannian.
-- **Jupyter Notebook-based workflow** for interactive exploration and visualization.
+- **Relation Subspace Extraction:**  
+  Extracts and analyzes lower-dimensional subspaces for a wide variety of semantic relations using PCA and deflation methods.
+
+- **Multi-embedding Support:**  
+  Works across popular embedding architectures (Word2Vec, Glove, BERT variants, etc.).
+
+- **Code Modularization:**  
+  Includes functions for embedding loading, pairwise similarity, and subspace operations.
+
+- **Rich Relation Data:**  
+  Provides hand-curated lists of word pairs for dozens of everyday and knowledge-intensive semantic relations.
 
 ## Getting Started
 
-### Prerequisites
+1. Install Python packages: numpy, pandas, matplotlib, tensorflow, torch, transformers, etc.
+2. Open the notebooks in Jupyter or Colab.
+3. Run the cells to analyze relations, visualize subspaces, and compare embedding models.
 
-- Python 3.x
-- Jupyter Notebook
-- Common scientific libraries: numpy, scipy, scikit-learn, pandas, matplotlib
+## Applications
 
-Install the requirements using pip (if a requirements.txt is present, otherwise install manually):
+- Linguistic relation probing
+- Analogy and analogy-solving tasks
+- Embedding space diagnostics
+- Cross-model comparison of semantic structure
 
-```bash
-pip install numpy scipy scikit-learn pandas matplotlib jupyter
-```
+---
 
-### Usage
-
-1. Clone the repository:
-
-    ```bash
-    git clone https://github.com/Aaditatgithub/Eigenspaces-as-a-Word-Subspace.git
-    cd Eigenspaces-as-a-Word-Subspace
-    ```
-
-2. Launch Jupyter Notebook:
-
-    ```bash
-    jupyter notebook
-    ```
-
-3. Open the main notebook and follow the instructions inside to run the experiments.
-
-## Project Structure
-
-- **Notebooks/**: Contains Jupyter notebooks with code and experiments.
-- **data/** (if present): Datasets or embeddings used for experiments.
-- **README.md**: Project documentation (this file).
-
-## Concepts
-
-- **Semantic Relation Vectors**: Represent word relationships as vectors in embedding space.
-- **Principal Component Analysis (PCA)**: Used to find the directions (principal components) that capture the most variance in the relation vectors.
-- **Grassmannian Manifold**: The space of all k-dimensional subspaces in n-dimensional space; used here to frame the optimization problem for subspace selection.
-
-## Citation
-
-If you use this repository or its ideas, please cite or reference the project.
-
-## License
-
-This project is provided under the MIT License. See [LICENSE](LICENSE) for details.
-
-## Contact
-
-For questions or feedback, please open an issue or contact [Aaditatgithub](https://github.com/Aaditatgithub).
+For details on methodology, see the notebooks and the included IEEE paper.
