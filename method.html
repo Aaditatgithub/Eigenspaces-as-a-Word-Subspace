@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Semantic Eigenspaces: Complete Methodology</title>
+    <script src="https://cdn.plot.ly/plotly-2.24.1.min.js"></script>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #333; max-width: 1200px; margin: 0 auto; padding: 20px; background: #f4f7f6; }
+        h1 { text-align: center; color: #2c3e50; margin-bottom: 5px; }
+        p.subtitle { text-align: center; color: #7f8c8d; margin-bottom: 40px; font-size: 1.1em; }
+        
+        /* Container Styling */
+        .container { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); margin-bottom: 50px; position: relative; }
+        .plot-container { width: 100%; height: 600px; border: 1px solid #eee; border-radius: 4px; }
+        .section-header { border-bottom: 2px solid #eee; padding-bottom: 10px; margin-bottom: 20px; color: #2c3e50; }
+        .explanation { padding: 20px; background: #eef9fe; border-left: 5px solid #2980b9; margin-top: 20px; border-radius: 0 4px 4px 0; }
+        
+        /* --- VIS 1: TOGGLE SWITCH --- */
+        .controls-overlay {
+            position: absolute; top: 25px; right: 25px; z-index: 10;
+            background: rgba(255,255,255,0.95); padding: 10px 15px;
+            border-radius: 8px; border: 1px solid #ddd; box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            display: flex; align-items: center; gap: 10px;
+        }
+        .switch { position: relative; display: inline-block; width: 50px; height: 24px; }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; transition: .4s; border-radius: 24px; }
+        .slider:before { position: absolute; content: ""; height: 16px; width: 16px; left: 4px; bottom: 4px; background-color: white; transition: .4s; border-radius: 50%; }
+        input:checked + .slider { background-color: #2980b9; }
+        input:checked + .slider:before { transform: translateX(26px); }
+        .label-text { font-weight: bold; color: #555; font-size: 14px; }
+
+        /* --- VIS 2: CONTROL PANEL --- */
+        .viz2-layout { display: flex; gap: 20px; flex-wrap: wrap; }
+        .control-panel { 
+            flex: 1; min-width: 300px; background: #f8f9fa; padding: 20px; 
+            border-radius: 8px; border: 1px solid #e0e0e0; height: fit-content;
+        }
+        .plot-wrapper { flex: 2; min-width: 500px; }
+        
+        .control-group { margin-bottom: 20px; }
+        .control-label { display: block; font-weight: bold; margin-bottom: 8px; color: #34495e; font-size: 0.9em; text-transform: uppercase; letter-spacing: 0.5px; }
+        
+        .radio-container { display: flex; gap: 5px; }
+        .radio-btn {
+            flex: 1; padding: 8px; text-align: center; background: white; 
+            border: 1px solid #ccc; border-radius: 4px; cursor: pointer; transition: 0.2s; font-size: 0.9em;
+        }
+        .radio-btn:hover { background: #f1f1f1; }
+        .radio-btn.active { background: #2980b9; border-color: #2980b9; color: white; font-weight: bold; }
+        
+        .result-box { margin-top: 15px; padding: 15px; border-radius: 6px; font-size: 0.95em; }
+        .result-box.success { background: #e8f5e9; border: 1px solid #c8e6c9; color: #2e7d32; }
+        .result-box.failure { background: #ffebee; border: 1px solid #ffcdd2; color: #c62828; }
+
+    </style>
+</head>
+<body>
+
+    <h1>Visualizing Semantic Relation Eigenspaces</h1>
+    <p class="subtitle">Interactive exploration of the geometric methodology</p>
+
+    <div class="container">
+        <h2 class="section-header">1. The Minimization Problem (Parallel Vectors)</h2>
+        
+        <div class="controls-overlay">
+            <span class="label-text">Show Vectors (Arrows)</span>
+            <label class="switch">
+                <input type="checkbox" id="vectorToggle" checked onchange="toggleVis1()">
+                <span class="slider"></span>
+            </label>
+        </div>
+
+        <p>This plot displays 50 relation instances ($\mathbf{r} = \mathbf{v} - \mathbf{u}$). 
+        <br><b>Visualization Note:</b> The vectors are displayed from randomized base points to create a non-intersecting "field" view, revealing their shared directionality.</p>
+        
+        <div id="vis1" class="plot-container"></div>
+        
+        <div class="explanation">
+            <strong>The Optimization Goal:</strong> PCA finds the <b>Green Plane</b> (the eigenspace) that minimizes the total energy of the <span style="color:red"><b>Red Vertical Lines</b></span>.
+            <ul>
+                <li>These red lines represent the <b>Orthogonal Leakage</b> (the component of the relation vector that <i>doesn't</i> fit the relation).</li>
+                <li>By minimizing this leakage, we "denoise" the relation, capturing its true geometric essence.</li>
+            </ul>
+        </div>
+    </div>
+
+
+    <div class="container">
+        <h2 class="section-header">2. Case Study: Country-Currency Verification</h2>
+        <p>Why does "Ambient Distance" fail while "Orthogonal Leakage" succeeds? Explore the geometry of the confusion matrix errors.</p>
+        
+        <div class="viz2-layout">
+            
+            <div class="control-panel">
+                <div class="control-group">
+                    <span class="control-label">1. Select Case</span>
+                    <div class="radio-container">
+                        <div class="radio-btn active" onclick="setScenario('india')" id="btn-india">India Query</div>
+                        <div class="radio-btn" onclick="setScenario('canada')" id="btn-canada">Canada Query</div>
+                    </div>
+                    <div id="scenario-desc" style="margin-top:5px; font-size:0.85em; color:#666;">Comparing Rupee vs. Yen</div>
+                </div>
+
+                <div class="control-group">
+                    <span class="control-label">2. Select Metric</span>
+                    <div class="radio-container">
+                        <div class="radio-btn active" onclick="setMetric('ambient')" id="btn-ambient">Ambient L2</div>
+                        <div class="radio-btn" onclick="setMetric('leakage')" id="btn-leakage">Subspace Leakage</div>
+                    </div>
+                </div>
+
+                <div id="result-display" class="result-box failure">
+                    </div>
+            </div>
+
+            <div class="plot-wrapper">
+                <div id="vis2" class="plot-container"></div>
+            </div>
+        </div>
+
+        <div class="explanation">
+            <strong>Geometric Interpretation:</strong>
+            <ul>
+                <li><b>Ambient Mode:</b> Vectors are arrows from the origin. We compare lengths. Often, incorrect vectors (like Yen) are just "shorter" in the embedding space, fooling the model.</li>
+                <li><b>Leakage Mode:</b> We compare how well the vector fits the <b>Relation Plane</b>. The correct answer lies flat (low drop); the incorrect answer sticks out (high drop).</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        // ==========================================
+        // SHARED HELPERS
+        // ==========================================
+        function randomNormal(mean, std, count) {
+            let arr = [];
+            for(let i=0; i<count; i++) {
+                let u = 0, v = 0;
+                while(u === 0) u = Math.random(); 
+                while(v === 0) v = Math.random();
+                let num = Math.sqrt( -2.0 * Math.log( u ) ) * Math.cos( 2.0 * Math.PI * v );
+                arr.push(num * std + mean);
+            }
+            return arr;
+        }
+
+        function randomUniform(min, max, count) {
+            let arr = [];
+            for(let i=0; i<count; i++) {
+                arr.push(Math.random() * (max - min) + min);
+            }
+            return arr;
+        }
+
+        // ==========================================
+        // VISUALIZATION 1: MINIMIZATION (JS)
+        // ==========================================
+        const n1 = 50;
+        
+        // 1. True Offsets (r_i, centered near origin, flat on XY plane)
+        const x1 = randomNormal(0, 3, n1);
+        const y1 = randomNormal(0, 2, n1);
+        const z1 = randomNormal(0, 0.4, n1); // Small Z-variance = "Flatness"
+
+        // 2. Base Jitter (to make them non-intersecting)
+        const JITTER_RANGE = 2.5; 
+        const bx = randomUniform(-JITTER_RANGE, JITTER_RANGE, n1);
+        const by = randomUniform(-JITTER_RANGE, JITTER_RANGE, n1);
+        const bz = randomUniform(-JITTER_RANGE, JITTER_RANGE, n1);
+
+        // 3. Vector End Coordinates (Tips)
+        const Ex = x1.map((x, i) => x + bx[i]);
+        const Ey = y1.map((y, i) => y + by[i]);
+        const Ez = z1.map((z, i) => z + bz[i]);
+        
+        // 4. Vector Start Coordinates (Bases)
+        const Sx = bx; const Sy = by; const Sz = bz;
+
+        // Trace 1: Points (Tips)
+        const tracePoints = {
+            x: Ex, y: Ey, z: Ez,
+            mode: 'markers', type: 'scatter3d',
+            marker: { size: 3, color: '#2980b9' },
+            name: 'Vector Tips'
+        };
+
+        // Trace 2: Vector Shafts (Lines)
+        let arrowX = [], arrowY = [], arrowZ = [];
+        for(let i=0; i<n1; i++){
+            arrowX.push(Sx[i]); arrowX.push(Ex[i]); arrowX.push(null);
+            arrowY.push(Sy[i]); arrowY.push(Ey[i]); arrowY.push(null);
+            arrowZ.push(Sz[i]); arrowZ.push(Ez[i]); arrowZ.push(null);
+        }
+        const traceVectors = {
+            x: arrowX, y: arrowY, z: arrowZ,
+            mode: 'lines', type: 'scatter3d',
+            line: { color: '#2980b9', width: 2, opacity: 0.5 },
+            name: 'Relation Vectors', visible: true
+        };
+
+        // Trace 3: The Plane
+        const planeSize = 8;
+        const tracePlane = {
+            type: 'surface',
+            x: [-planeSize, planeSize], y: [-planeSize, planeSize], z: [[0,0],[0,0]],
+            showscale: false, opacity: 0.2, colorscale: [[0, 'green'], [1, 'green']],
+            name: 'Eigenspace'
+        };
+
+        // Trace 4: Leakage Lines (Tip to Plane)
+        let leakX = [], leakY = [], leakZ = [];
+        for(let i=0; i<n1; i++){
+            leakX.push(Ex[i]); leakX.push(Ex[i]); leakX.push(null);
+            leakY.push(Ey[i]); leakY.push(Ey[i]); leakY.push(null);
+            leakZ.push(Ez[i]); leakZ.push(0);     leakZ.push(null);
+        }
+        const traceLeakage = {
+            x: leakX, y: leakY, z: leakZ,
+            mode: 'lines', type: 'scatter3d',
+            line: { color: '#e74c3c', width: 2 },
+            name: 'Orthogonal Leakage'
+        };
+
+        const layout1 = {
+            margin: {l:0, r:0, b:0, t:0}, showlegend: false,
+            scene: {
+                aspectmode: 'cube', camera: { eye: {x: 2.0, y: 2.0, z: 1.0} },
+                xaxis: {title: 'Dim 1', range: [-8, 8]}, 
+                yaxis: {title: 'Dim 2', range: [-8, 8]}, 
+                zaxis: {title: 'Dim 3 (Leakage)', range: [-4, 4]}
+            }
+        };
+
+        Plotly.newPlot('vis1', [tracePlane, tracePoints, traceVectors, traceLeakage], layout1);
+
+        function toggleVis1() {
+            const isVisible = document.getElementById("vectorToggle").checked;
+            Plotly.restyle('vis1', { 'visible': isVisible }, [2]); // Index 2 is traceVectors
+        }
+
+        // ==========================================
+        // VISUALIZATION 2: COUNTRY-CURRENCY (JS)
+        // ==========================================
+        // Data from Confusion Matrix image
+        const scenarios = {
+            'india': {
+                name: "India",
+                correct: { name: "Indian Rupee", color: "#2ecc71", ambient: 0.936, leakage: 0.312 }, // Green
+                incorrect: { name: "Japanese Yen", color: "#e74c3c", ambient: 0.877, leakage: 0.468 } // Red
+            },
+            'canada': {
+                name: "Canada",
+                correct: { name: "Canadian Dollar", color: "#2ecc71", ambient: 0.938, leakage: 0.326 },
+                incorrect: { name: "Japanese Yen", color: "#e74c3c", ambient: 0.923, leakage: 0.510 }
+            }
+        };
+
+        let currentScenario = 'india';
+        let currentMetric = 'ambient';
+
+        function updateVis2() {
+            const data = scenarios[currentScenario];
+            const isAmbient = (currentMetric === 'ambient');
+
+            // Generate vectors to match specific magnitudes
+            // xy = sqrt(ambient^2 - leakage^2)
+            const xyCorr = Math.sqrt(data.correct.ambient**2 - data.correct.leakage**2);
+            const vCorr = { x: xyCorr, y: 0, z: data.correct.leakage };
+
+            const xyInc = Math.sqrt(data.incorrect.ambient**2 - data.incorrect.leakage**2);
+            // Angle incorrect one slightly for separation
+            const vInc = { x: xyInc * 0.707, y: xyInc * 0.707, z: data.incorrect.leakage };
+
+            const traces = [];
+
+            // 1. Plane (Only in Leakage mode)
+            if (!isAmbient) {
+                traces.push({
+                    type: 'surface',
+                    x: [-1, 1], y: [-1, 1], z: [[0,0],[0,0]],
+                    showscale: false, opacity: 0.2, colorscale: 'Greys',
+                    name: 'Relation Plane', hoverinfo: 'none'
+                });
+            }
+
+            // 2. Correct Vector (Green)
+            traces.push({
+                x: [0, vCorr.x], y: [0, vCorr.y], z: [0, vCorr.z],
+                type: 'scatter3d', mode: 'lines+markers',
+                line: { color: data.correct.color, width: 6 },
+                marker: { size: 4 },
+                name: data.correct.name,
+                hovertemplate: `<b>${data.correct.name}</b><br>Ambient: ${data.correct.ambient}<br>Leakage: ${data.correct.leakage}<extra></extra>`
+            });
+
+            // 3. Incorrect Vector (Red)
+            traces.push({
+                x: [0, vInc.x], y: [0, vInc.y], z: [0, vInc.z],
+                type: 'scatter3d', mode: 'lines+markers',
+                line: { color: data.incorrect.color, width: 6 },
+                marker: { size: 4 },
+                name: data.incorrect.name,
+                hovertemplate: `<b>${data.incorrect.name}</b><br>Ambient: ${data.incorrect.ambient}<br>Leakage: ${data.incorrect.leakage}<extra></extra>`
+            });
+
+            // 4. Metric Visualizations (Drop Lines or None)
+            if (!isAmbient) {
+                // Vertical Drop Lines
+                traces.push({
+                    x: [vCorr.x, vCorr.x], y: [vCorr.y, vCorr.y], z: [vCorr.z, 0],
+                    type: 'scatter3d', mode: 'lines',
+                    line: { color: data.correct.color, width: 3, dash: 'dot' },
+                    showlegend: false, hoverinfo: 'skip'
+                });
+                traces.push({
+                    x: [vInc.x, vInc.x], y: [vInc.y, vInc.y], z: [vInc.z, 0],
+                    type: 'scatter3d', mode: 'lines',
+                    line: { color: data.incorrect.color, width: 3, dash: 'dot' },
+                    showlegend: false, hoverinfo: 'skip'
+                });
+            }
+
+            const layout2 = {
+                margin: {l:0, r:0, b:0, t:0},
+                scene: {
+                    camera: { eye: {x: 1.5, y: 0.5, z: 0.5} },
+                    xaxis: {range: [0, 1.2], title: ''}, yaxis: {range: [0, 1.2], title: ''},
+                    zaxis: {range: [0, 1.0], title: isAmbient ? '' : 'Leakage Axis'},
+                    aspectmode: 'cube'
+                },
+                legend: { x: 0, y: 1 }
+            };
+
+            Plotly.newPlot('vis2', traces, layout2);
+            updateNarrative(data, isAmbient);
+        }
+
+        function updateNarrative(data, isAmbient) {
+            const box = document.getElementById('result-display');
+            let html = "";
+            
+            if (isAmbient) {
+                // Check who is "closer" (smaller ambient)
+                const wrongIsCloser = data.incorrect.ambient < data.correct.ambient;
+                
+                html = `<strong>Ambient L2 Mode (Vector Length):</strong><br>`;
+                html += `Comparing total distance from origin.<br><br>`;
+                html += `<b>${data.correct.name}:</b> ${data.correct.ambient}<br>`;
+                html += `<b>${data.incorrect.name}:</b> ${data.incorrect.ambient}<br><br>`;
+                
+                if (wrongIsCloser) {
+                    box.className = "result-box failure";
+                    html += `⚠️ <b>FAILURE:</b> The incorrect answer (${data.incorrect.name}) is geometrically "closer" (shorter vector). The model guesses wrong.`;
+                } else {
+                    box.className = "result-box success";
+                    html += `✅ <b>SUCCESS:</b> In this case, ambient distance worked.`;
+                }
+            } else {
+                // Check who fits plane better (smaller leakage)
+                const correctFitsBetter = data.correct.leakage < data.incorrect.leakage;
+                
+                html = `<strong>Leakage Mode (Distance to Plane):</strong><br>`;
+                html += `Comparing vertical drop to the relation subspace.<br><br>`;
+                html += `<b>${data.correct.name}:</b> ${data.correct.leakage} (Flat)<br>`;
+                html += `<b>${data.incorrect.name}:</b> ${data.incorrect.leakage} (Steep)<br><br>`;
+
+                if (correctFitsBetter) {
+                    box.className = "result-box success";
+                    html += `✅ <b>SUCCESS:</b> The correct answer fits the geometry perfectly. The model guesses correctly.`;
+                } else {
+                    box.className = "result-box failure";
+                    html += `⚠️ <b>FAILURE:</b> Subspace method failed.`;
+                }
+            }
+            box.innerHTML = html;
+        }
+
+        function setScenario(scen) {
+            currentScenario = scen;
+            document.getElementById('btn-india').className = (scen==='india' ? 'radio-btn active' : 'radio-btn');
+            document.getElementById('btn-canada').className = (scen==='canada' ? 'radio-btn active' : 'radio-btn');
+            document.getElementById('scenario-desc').innerText = (scen==='india' ? "Comparing Rupee vs. Yen" : "Comparing Dollar vs. Yen");
+            updateVis2();
+        }
+
+        function setMetric(met) {
+            currentMetric = met;
+            document.getElementById('btn-ambient').className = (met==='ambient' ? 'radio-btn active' : 'radio-btn');
+            document.getElementById('btn-leakage').className = (met==='leakage' ? 'radio-btn active' : 'radio-btn');
+            updateVis2();
+        }
+
+        // Initialize Vis 2
+        updateVis2();
+
+    </script>
+</body>
+</html>

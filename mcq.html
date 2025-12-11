@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Geometric Verification: Precise Matrix Visualization</title>
+    <script src="https://cdn.plot.ly/plotly-2.24.1.min.js"></script>
+    <style>
+        body { font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background: #f8f9fa; color: #333; margin: 0; padding: 20px; display: flex; flex-direction: column; align-items: center; }
+        
+        h1 { margin-bottom: 5px; color: #2c3e50; }
+        p.subtitle { color: #7f8c8d; margin-bottom: 30px; }
+
+        .dashboard { display: flex; gap: 20px; width: 100%; max-width: 1400px; align-items: flex-start; }
+        
+        /* SIDEBAR */
+        .sidebar { flex: 1; min-width: 340px; background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+        
+        .control-section { margin-bottom: 25px; }
+        .label { font-size: 0.85em; font-weight: bold; text-transform: uppercase; color: #95a5a6; margin-bottom: 10px; display: block; letter-spacing: 0.5px; }
+
+        /* Grid & Buttons */
+        .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+        .btn { padding: 12px; border: 1px solid #e0e0e0; background: #fafafa; border-radius: 6px; cursor: pointer; text-align: center; font-size: 0.9em; transition: 0.2s; font-weight: 500; }
+        .btn:hover { background: #f0f0f0; border-color: #bbb; }
+        .btn.active { background: #34495e; color: white; border-color: #34495e; box-shadow: 0 2px 5px rgba(44, 62, 80, 0.3); }
+
+        /* Toggle */
+        .toggle-wrapper { background: #ecf0f1; padding: 4px; border-radius: 8px; display: flex; }
+        .toggle { flex: 1; padding: 10px; text-align: center; border-radius: 6px; cursor: pointer; font-size: 0.9em; font-weight: 500; transition: 0.2s; color: #7f8c8d; }
+        .toggle.active { background: white; color: #2c3e50; box-shadow: 0 2px 4px rgba(0,0,0,0.05); font-weight: bold; }
+
+        /* Stats Table */
+        .stats { margin-top: 15px; font-size: 0.9em; border: 1px solid #eee; border-radius: 8px; overflow: hidden; }
+        .row { display: flex; justify-content: space-between; padding: 10px 15px; border-bottom: 1px solid #f5f5f5; background: #fff; align-items: center; }
+        .row:last-child { border-bottom: none; }
+        
+        .row.winner { background: #fffde7; } /* Highlight winner row */
+        .val-display { font-family: monospace; color: #666; }
+        .val-display.highlight { font-weight: bold; color: #000; text-decoration: underline; text-decoration-color: #f39c12; text-decoration-thickness: 3px; }
+
+        .currency-name { display: flex; align-items: center; gap: 8px; }
+        .dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+        .dot.correct { background: #2ecc71; } 
+        .dot.wrong { background: #e74c3c; }   
+
+        /* Legend */
+        .legend { margin-top: 20px; font-size: 0.8em; color: #666; background: #f9f9f9; padding: 15px; border-radius: 8px; border: 1px solid #eee; }
+        .legend-item { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+
+        /* PLOT */
+        .plot-container { flex: 3; background: white; height: 750px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); padding: 10px; position: relative; }
+        #plot { width: 100%; height: 100%; }
+
+    </style>
+</head>
+<body>
+
+    <h1>Geometric Verification: Ambient vs Projected</h1>
+    <p class="subtitle">Visualizing the Confusion Matrix Data</p>
+
+    <div class="dashboard">
+        
+        <div class="sidebar">
+            <div class="control-section">
+                <span class="label">1. Select Query Country</span>
+                <div class="grid">
+                    <div class="btn active" onclick="setCountry('india')" id="c-india">India</div>
+                    <div class="btn" onclick="setCountry('japan')" id="c-japan">Japan</div>
+                    <div class="btn" onclick="setCountry('china')" id="c-china">China</div>
+                    <div class="btn" onclick="setCountry('usa')" id="c-usa">USA</div>
+                    <div class="btn" onclick="setCountry('canada')" id="c-canada">Canada</div>
+                    <div class="btn" onclick="setCountry('australia')" id="c-australia">Australia</div>
+                </div>
+            </div>
+
+            <div class="control-section">
+                <span class="label">2. Select Metric Mode</span>
+                <div class="toggle-wrapper">
+                    <div class="toggle active" onclick="setMode('ambient')" id="m-ambient">Ambient (L2 Distance)</div>
+                    <div class="toggle" onclick="setMode('leakage')" id="m-leakage">Projected Leakage</div>
+                </div>
+            </div>
+
+            <div class="control-section">
+                <span class="label">Data Values (Projected / Ambient)</span>
+                <div class="stats" id="stats-box"></div>
+            </div>
+
+            <div class="legend">
+                <div class="legend-item">
+                    <span class="dot correct"></span> <span><b>Green:</b> Correct Answer</span>
+                </div>
+                <div class="legend-item">
+                    <span class="dot wrong"></span> <span><b>Red:</b> Incorrect Distractor</span>
+                </div>
+                <div class="legend-item">
+                    <div style="width:20px; height:4px; background:#333;"></div> <span><b>Bold Line:</b> Model Selection (Minimum Value)</span>
+                </div>
+                <div style="margin-top:8px; line-height:1.4;">
+                    <i>Note: In "Ambient" mode, the shortest arrow wins. In "Projected" mode, the lowest leakage (flattest vector) wins.</i>
+                </div>
+            </div>
+        </div>
+
+        <div class="plot-container">
+            <div id="plot"></div>
+        </div>
+
+    </div>
+
+    <script>
+        // ===============================================
+        // DATA MATRIX (Values from user's Confusion Matrix)
+        // Format: l = Projected Leakage, a = Ambient L2
+        // ===============================================
+        const data = {
+            'india': {
+                correct: 'rupee',
+                items: [
+                    { id: 'rupee', name: "Indian Rupee", l: 0.312, a: 0.936 },
+                    { id: 'yen', name: "Japanese Yen", l: 0.468, a: 0.877 }, // Fail: Ambient Min
+                    { id: 'yuan', name: "Chinese Yuan", l: 0.493, a: 0.938 },
+                    { id: 'usd', name: "US Dollar", l: 0.501, a: 0.967 },
+                    { id: 'cad', name: "Canadian Dollar", l: 0.478, a: 0.952 },
+                    { id: 'aud', name: "Australian Dollar", l: 0.473, a: 0.954 }
+                ]
+            },
+            'japan': {
+                correct: 'yen',
+                items: [
+                    { id: 'rupee', name: "Indian Rupee", l: 0.514, a: 1.030 },
+                    { id: 'yen', name: "Japanese Yen", l: 0.277, a: 0.797 }, // Success: Min Both
+                    { id: 'yuan', name: "Chinese Yuan", l: 0.484, a: 0.907 },
+                    { id: 'usd', name: "US Dollar", l: 0.531, a: 0.979 },
+                    { id: 'cad', name: "Canadian Dollar", l: 0.519, a: 0.965 },
+                    { id: 'aud', name: "Australian Dollar", l: 0.584, a: 0.959 }
+                ]
+            },
+            'china': {
+                correct: 'yuan',
+                items: [
+                    { id: 'rupee', name: "Indian Rupee", l: 0.495, a: 0.982 },
+                    { id: 'yen', name: "Japanese Yen", l: 0.449, a: 0.842 },
+                    { id: 'yuan', name: "Chinese Yuan", l: 0.277, a: 0.820 }, // Success: Min Both
+                    { id: 'usd', name: "US Dollar", l: 0.496, a: 0.927 },
+                    { id: 'cad', name: "Canadian Dollar", l: 0.480, a: 0.910 },
+                    { id: 'aud', name: "Australian Dollar", l: 0.472, a: 0.902 }
+                ]
+            },
+            'usa': {
+                correct: 'usd',
+                items: [
+                    { id: 'rupee', name: "Indian Rupee", l: 0.492, a: 0.828 },
+                    { id: 'yen', name: "Japanese Yen", l: 0.501, a: 0.690 },
+                    { id: 'yuan', name: "Chinese Yuan", l: 0.506, a: 0.726 },
+                    { id: 'usd', name: "US Dollar", l: 0.271, a: 0.626 }, // Success: Min Both
+                    { id: 'cad', name: "Canadian Dollar", l: 0.449, a: 0.673 },
+                    { id: 'aud', name: "Australian Dollar", l: 0.447, a: 0.684 }
+                ]
+            },
+            'canada': {
+                correct: 'cad',
+                items: [
+                    { id: 'rupee', name: "Indian Rupee", l: 0.495, a: 1.100 },
+                    { id: 'yen', name: "Japanese Yen", l: 0.510, a: 0.923 }, // Fail: Ambient Min
+                    { id: 'yuan', name: "Chinese Yuan", l: 0.510, a: 0.959 },
+                    { id: 'usd', name: "US Dollar", l: 0.457, a: 0.996 },
+                    { id: 'cad', name: "Canadian Dollar", l: 0.326, a: 0.938 }, // Success: Leakage Min
+                    { id: 'aud', name: "Australian Dollar", l: 0.413, a: 0.996 }
+                ]
+            },
+            'australia': {
+                correct: 'aud',
+                items: [
+                    { id: 'rupee', name: "Indian Rupee", l: 0.487, a: 1.020 },
+                    { id: 'yen', name: "Japanese Yen", l: 0.489, a: 0.884 }, // Fail: Ambient Min
+                    { id: 'yuan', name: "Chinese Yuan", l: 0.488, a: 0.923 },
+                    { id: 'usd', name: "US Dollar", l: 0.474, a: 0.964 },
+                    { id: 'cad', name: "Canadian Dollar", l: 0.411, a: 0.938 },
+                    { id: 'aud', name: "Australian Dollar", l: 0.388, a: 0.897 } // Success: Leakage Min
+                ]
+            }
+        };
+
+        let currCountry = 'india';
+        let currMode = 'ambient';
+
+        function updateViz() {
+            const countryData = data[currCountry];
+            const isAmbient = currMode === 'ambient';
+            
+            // 1. Determine "Bold" Selection (The vector with the minimum value in current mode)
+            let minVal = Infinity;
+            let winnerId = null;
+            countryData.items.forEach(item => {
+                const val = isAmbient ? item.a : item.l;
+                if (val < minVal) {
+                    minVal = val;
+                    winnerId = item.id;
+                }
+            });
+
+            // 2. Build 3D Traces
+            const traces = [];
+
+            // Optional: Plane Reference (Only for Leakage Mode)
+            if (!isAmbient) {
+                traces.push({
+                    type: 'surface',
+                    x: [-1, 1], y: [-1, 1], z: [[0,0],[0,0]],
+                    showscale: false, opacity: 0.1, colorscale: 'Greys',
+                    hoverinfo: 'none', name: 'Relation Plane'
+                });
+            }
+
+            countryData.items.forEach((item, idx) => {
+                const isCorrect = (item.id === countryData.correct);
+                const isWinner = (item.id === winnerId); // This arrow becomes BOLD
+                
+                // --- GEOMETRY CONSTRUCTION ---
+                // We construct the vector such that:
+                // 1. Hypotenuse Length = Ambient Value (Always true in physics of embeddings)
+                // 2. Z-Height = Leakage Value
+                const xyLen = Math.sqrt(Math.max(0, item.a**2 - item.l**2));
+                
+                // Distribute vectors in a circle
+                const angle = (idx / 6) * Math.PI * 2;
+                const x = xyLen * Math.cos(angle);
+                const y = xyLen * Math.sin(angle);
+                const z = item.l; 
+
+                // --- STYLING ---
+                const color = isCorrect ? '#2ecc71' : '#e74c3c'; // Green or Red
+                const lineWidth = isWinner ? 10 : (isCorrect ? 5 : 2); // Winner is boldest
+                const opacity = isWinner ? 1.0 : 0.4; // Fade non-winners
+                
+                // Trace 1: The Vector itself
+                traces.push({
+                    x: [0, x], y: [0, y], z: [0, z],
+                    type: 'scatter3d', mode: 'lines+markers',
+                    line: { color: color, width: lineWidth },
+                    marker: { size: 4, color: color },
+                    opacity: opacity,
+                    name: item.name,
+                    hovertemplate: 
+                        `<b>${item.name}</b><br>` +
+                        `Ambient (Len): ${item.a}<br>` +
+                        `Leakage (Z): ${item.l}<extra></extra>`
+                });
+
+                // Trace 2: The Visual Guide (Drop Line)
+                // In Ambient mode, we just show the vector.
+                // In Leakage mode, we show the drop line to emphasize Z-height.
+                if (!isAmbient) {
+                    traces.push({
+                        x: [x, x], y: [y, y], z: [z, 0],
+                        type: 'scatter3d', mode: 'lines',
+                        line: { color: color, width: isWinner ? 3 : 1, dash: 'dot' },
+                        opacity: opacity,
+                        showlegend: false, hoverinfo: 'skip'
+                    });
+                }
+            });
+
+            const layout = {
+                margin: {l:0, r:0, b:0, t:0},
+                showlegend: false,
+                scene: {
+                    aspectmode: 'cube',
+                    camera: { eye: {x: 1.4, y: 1.4, z: 0.6} },
+                    xaxis: { title: '', range: [-1.2, 1.2], showgrid:false, zeroline:false, showticklabels:false },
+                    yaxis: { title: '', range: [-1.2, 1.2], showgrid:false, zeroline:false, showticklabels:false },
+                    // Z-axis label changes based on mode
+                    zaxis: { title: isAmbient ? 'Z' : 'Leakage', range: [0, 1.1] }
+                }
+            };
+
+            Plotly.react('plot', traces, layout);
+            renderStats(countryData, winnerId, isAmbient);
+        }
+
+        // --- RENDER SIDEBAR STATS ---
+        function renderStats(data, winnerId, isAmbient) {
+            const box = document.getElementById('stats-box');
+            let html = "";
+            
+            data.items.forEach(item => {
+                const isWinner = (item.id === winnerId);
+                const isCorrect = (item.id === data.correct);
+                
+                const dotClass = isCorrect ? "dot correct" : "dot wrong";
+                const rowClass = isWinner ? "row winner" : "row";
+                
+                // Highlight the number that matches the current mode
+                const valL = isAmbient ? item.l.toFixed(3) : `<b>${item.l.toFixed(3)}</b>`;
+                const valA = isAmbient ? `<b>${item.a.toFixed(3)}</b>` : item.a.toFixed(3);
+                
+                // If it's the winner, add extra emphasis color
+                const valClass = isWinner ? "val-display highlight" : "val-display";
+
+                html += `
+                <div class="${rowClass}">
+                    <div class="currency-name">
+                        <span class="${dotClass}"></span> ${item.name}
+                    </div>
+                    <div class="${valClass}">
+                        ${valL} / ${valA}
+                    </div>
+                </div>`;
+            });
+            box.innerHTML = html;
+        }
+
+        // --- EVENTS ---
+        function setCountry(c) {
+            currCountry = c;
+            document.querySelectorAll('.btn').forEach(b => b.classList.remove('active'));
+            document.getElementById(`c-${c}`).classList.add('active');
+            updateViz();
+        }
+
+        function setMode(m) {
+            currMode = m;
+            document.querySelectorAll('.toggle').forEach(t => t.classList.remove('active'));
+            document.getElementById(`m-${m}`).classList.add('active');
+            updateViz();
+        }
+
+        // Init
+        updateViz();
+
+    </script>
+</body>
+</html>
